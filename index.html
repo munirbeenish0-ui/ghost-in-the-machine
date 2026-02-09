@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghost in the Machine - AI QA Agent</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #00d4aa;
+            --secondary: #7c3aed;
+            --dark-bg: #0f172a;
+            --dark-surface: #1e293b;
+            --dark-border: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .app-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr auto;
+            height: 100vh;
+            gap: 1px;
+            background: var(--dark-border);
+        }
+        
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            background: var(--dark-surface);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--dark-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .logo-icon {
+            color: var(--primary);
+            animation: pulse 2s infinite;
+        }
+        
+        .url-input-container {
+            flex: 1;
+            max-width: 600px;
+            margin: 0 2rem;
+        }
+        
+        .url-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--dark-bg);
+            border: 1px solid var(--dark-border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+        
+        .url-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: var(--dark-bg);
+        }
+        
+        .btn-primary:hover {
+            background: #00b894;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--dark-border);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--dark-border);
+        }
+        
+        /* Panels */
+        .panel {
+            background: var(--dark-surface);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .panel-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--dark-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .panel-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .panel-content {
+            flex: 1;
+            overflow: auto;
+            padding: 1rem;
+        }
+        
+        /* Browser Preview */
+        .browser-preview {
+            position: relative;
+        }
+        
+        .browser-frame {
+            height: 100%;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .browser-header {
+            padding: 0.75rem 1rem;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .browser-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .browser-control {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .control-close { background: #ef4444; }
+        .control-min { background: #f59e0b; }
+        .control-max { background: #10b981; }
+        
+        .browser-url {
+            flex: 1;
+            padding: 0.25rem 0.75rem;
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            color: #475569;
+        }
+        
+        .viewport {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+        }
+        
+        .viewport-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        
+        /* Thinking Log */
+        .thinking-log {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+        
+        .log-entry {
+            padding: 1rem;
+            border-bottom: 1px solid var(--dark-border);
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .log-timestamp {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .log-content {
+            white-space: pre-wrap;
+        }
+        
+        .log-thinking { border-left: 3px solid var(--primary); }
+        .log-observation { border-left: 3px solid var(--secondary); }
+        .log-issue { border-left: 3px solid var(--warning); }
+        .log-fix { border-left: 3px solid var(--success); }
+        .log-error { border-left: 3px solid var(--danger); }
+        
+        /* Issue List */
+        .issues-container {
+            margin-top: 1rem;
+        }
+        
+        .issue-card {
+            background: var(--dark-bg);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border: 1px solid var(--dark-border);
+        }
+        
+        .issue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+        
+        .issue-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .issue-severity {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .severity-critical { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+        .severity-high { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+        .severity-medium { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+        
+        .issue-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .fix-preview {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 4px;
+            padding: 0.75rem;
+            font-family: 'Menlo', monospace;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+        
+        .diff-added {
+            color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+        
+        .diff-removed {
+            color: var(--danger);
+            background: rgba(239, 68, 68, 0.1);
+        }
+        
+        /* Footer */
+        .footer {
+            grid-column: 1 / -1;
+            background: var(--dark-surface);
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--dark-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: blink 2s infinite;
+        }
+        
+        .agent-stats {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .app-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 40vh 40vh auto;
+            }
+            
+            .url-input-container {
+                max-width: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-robot logo-icon"></i>
+                <span>Ghost in the Machine</span>
+            </div>
+            
+            <div class="url-input-container">
+                <input 
+                    type="text" 
+                    class="url-input" 
+                    placeholder="https://example.com" 
+                    value="https://www.example.com"
+                >
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-secondary">
+                    <i class="fas fa-play"></i>
+                    Analyze
+                </button>
+                <button class="btn btn-primary" id="fixItBtn">
+                    <i class="fas fa-magic"></i>
+                    Fix It
+                </button>
+            </div>
+        </header>
+        
+        <!-- Browser Preview Panel -->
+        <div class="panel browser-preview">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <i class="fas fa-globe"></i>
+                    Live Browser Preview
+                </div>
+                <div class="controls">
+                    <button class="btn btn-secondary">
+                        <i class="fas fa-mobile-alt"></i>
+                        Mobile
+                    </button>
+                    <button class="btn btn-secondary">
+                        <i class="fas fa-expand"></i>
+                        Full Screen
+                    </button>
+                </div>
+            </div>
+            <div class="panel-content">
+                <div class="browser-frame">
+                    <div class="browser-header">
+                        <div class="browser-controls">
+                            <div class="browser-control control-close"></div>
+                            <div class="browser-control control-min"></div>
+                            <div class="browser-control control-max"></div>
+                        </div>
+                        <div class="browser-url">https://www.example.com</div>
+                        <div style="width: 60px;"></div>
+                    </div>
+                    <div class="viewport" id="viewport">
+                        <div class="viewport-placeholder">
+                            <div style="text-align: center;">
+                                <i class="fas fa-eye" style="font-size: 3rem; margin-bottom: 1rem; color: #334155;"></i>
+                                <div>Website preview will appear here</div>
+                                <div style="font-size: 0.8rem; margin-top: 0.5rem;">
+                                    Enter URL and click Analyze
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Thinking Log Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <i class="fas fa-brain"></i>
+                    AI Thinking Log
+                </div>
+                <div class="controls">
+                    <button class="btn btn-secondary">
+                        <i class="fas fa-filter"></i>
+                        Filter
+                    </button>
+                    <button class="btn btn-secondary">
+                        <i class="fas fa-download"></i>
+                        Export
+                    </button>
+                </div>
+            </div>
+            <div class="panel-content thinking-log">
+                <div class="log-entry log-thinking">
+                    <div class="log-timestamp">14:32:05</div>
+                    <div class="log-content">🔍 Initializing analysis for https://www.example.com</div>
+                </div>
+                <div class="log-entry log-observation">
+                    <div class="log-timestamp">14:32:08</div>
+                    <div class="log-content">📊 Page loaded successfully. Viewport: 1920×1080. DOM elements: 247</div>
+                </div>
+                <div class="log-entry log-thinking">
+                    <div class="log-timestamp">14:32:10</div>
+                    <div class="log-content">🤔 Running multimodal analysis: Visual + DOM + Accessibility</div>
+                </div>
+                <div class="log-entry log-issue">
+                    <div class="log-timestamp">14:32:15</div>
+                    <div class="log-content">⚠️ Issue detected: Low contrast ratio (3.2:1) on primary buttons</div>
+                </div>
+                <div class="log-entry log-observation">
+                    <div class="log-timestamp">14:32:18</div>
+                    <div class="log-content">📱 Testing mobile responsiveness... 3 elements overlapping at 375px width</div>
+                </div>
+                <div class="log-entry log-issue">
+                    <div class="log-timestamp">14:32:22</div>
+                    <div class="log-content">⚠️ Missing alt text on 5 product images (accessibility violation)</div>
+                </div>
+                <div class="log-entry log-thinking">
+                    <div class="log-timestamp">14:32:25</div>
+                    <div class="log-content">🧠 Planning user flow: sign up → login → search → add to cart</div>
+                </div>
+                
+                <!-- Issues Section -->
+                <div class="issues-container">
+                    <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Detected Issues</h3>
+                    
+                    <div class="issue-card">
+                        <div class="issue-header">
+                            <div class="issue-title">
+                                <i class="fas fa-universal-access"></i>
+                                Accessibility: Low Contrast
+                            </div>
+                            <span class="issue-severity severity-high">HIGH</span>
+                        </div>
+                        <div class="issue-description">
+                            Primary CTA buttons have contrast ratio of 3.2:1 (WCAG requires 4.5:1).
+                            This affects users with visual impairments.
+                        </div>
+                        <div class="fix-preview">
+                            <span class="diff-removed">- background-color: #7c3aed;</span><br>
+                            <span class="diff-added">+ background-color: #5b21b6;</span><br>
+                            <span class="diff-added">+ color: #ffffff;</span>
+                        </div>
+                    </div>
+                    
+                    <div class="issue-card">
+                        <div class="issue-header">
+                            <div class="issue-title">
+                                <i class="fas fa-mobile-alt"></i>
+                                Mobile Responsiveness
+                            </div>
+                            <span class="issue-severity severity-medium">MEDIUM</span>
+                        </div>
+                        <div class="issue-description">
+                            Header navigation overlaps with search bar on viewports below 400px.
+                            Footer elements become stacked incorrectly on mobile.
+                        </div>
+                        <div class="fix-preview">
+                            <span class="diff-added">@media (max-width: 400px) {</span><br>
+                            <span class="diff-added">  .header-nav { flex-direction: column; }</span><br>
+                            <span class="diff-added">  .search-bar { margin-top: 1rem; width: 100%; }</span><br>
+                            <span class="diff-added">}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="issue-card">
+                        <div class="issue-header">
+                            <div class="issue-title">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Broken User Flow
+                            </div>
+                            <span class="issue-severity severity-critical">CRITICAL</span>
+                        </div>
+                        <div class="issue-description">
+                            Checkout button is hidden behind floating chat widget on mobile.
+                            User cannot complete purchase on iOS devices.
+                        </div>
+                        <div class="fix-preview">
+                            <span class="diff-removed">- z-index: 9999;</span><br>
+                            <span class="diff-added">+ z-index: 100;</span><br>
+                            <span class="diff-added">+ @media (max-width: 768px) { display: none; }</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span>Agent Active - Analyzing UX patterns</span>
+            </div>
+            
+            <div class="agent-stats">
+                <div class="stat">
+                    <i class="fas fa-bug"></i>
+                    <span>3 issues found</span>
+                </div>
+                <div class="stat">
+                    <i class="fas fa-clock"></i>
+                    <span>Analysis time: 27s</span>
+                </div>
+                <div class="stat">
+                    <i class="fas fa-code"></i>
+                    <span>12 fixes generated</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Simulated AI Agent Behavior
+        class AutonomousQAAgent {
+            constructor() {
+                this.isAnalyzing = false;
+                this.issueCount = 0;
+                this.fixesGenerated = 0;
+                this.logEntries = [];
+            }
+            
+            async analyzeURL(url) {
+                this.isAnalyzing = true;
+                this.addLog('🔍 Starting analysis of ' + url, 'thinking');
+                
+                // Simulate multimodal analysis
+                setTimeout(() => {
+                    this.addLog('📊 Page rendered successfully', 'observation');
+                    this.addLog('🧠 Analyzing visual hierarchy and layout', 'thinking');
+                    
+                    setTimeout(() => {
+                        this.detectIssues();
+                        this.executeUserFlow();
+                    }, 1000);
+                }, 1500);
+            }
+            
+            detectIssues() {
+                const issues = [
+                    {
+                        type: 'accessibility',
+                        message: 'Low contrast ratio on primary buttons (3.2:1)',
+                        severity: 'high',
+                        fix: {
+                            before: 'background-color: #7c3aed;',
+                            after: 'background-color: #5b21b6;\ncolor: #ffffff;'
+                        }
+                    },
+                    {
+                        type: 'responsive',
+                        message: 'Navigation overlaps on mobile (< 400px)',
+                        severity: 'medium',
+                        fix: {
+                            before: '.header-nav { display: flex; }',
+                            after: '@media (max-width: 400px) {\n  .header-nav { flex-direction: column; }\n  .search-bar { margin-top: 1rem; width: 100%; }\n}'
+                        }
+                    },
+                    {
+                        type: 'usability',
+                        message: 'Checkout button hidden by chat widget on mobile',
+                        severity: 'critical',
+                        fix: {
+                            before: '.chat-widget { z-index: 9999; }',
+                            after: '.chat-widget { z-index: 100; }\n@media (max-width: 768px) { .chat-widget { display: none; } }'
+                        }
+                    }
+                ];
+                
+                issues.forEach(issue => {
+                    this.issueCount++;
+                    this.addLog(`⚠️ ${issue.message}`, 'issue');
+                });
+                
+                this.addLog(`📋 Found ${issues.length} critical issues`, 'observation');
+            }
+            
+            executeUserFlow() {
+                this.addLog('🚀 Executing user flow: sign up → login → search → add to cart', 'thinking');
+                
+                setTimeout(() => {
+                    this.addLog('✅ Sign up flow completed successfully', 'observation');
+                    this.addLog('⚠️ Login form missing password visibility toggle', 'issue');
+                    this.addLog('✅ Search functionality working correctly', 'observation');
+                    this.addLog('⚠️ Add to cart button has insufficient touch target (32px)', 'issue');
+                    
+                    this.generateFixes();
+                }, 2000);
+            }
+            
+            generateFixes() {
+                this.addLog('🔧 Generating precise code fixes...', 'thinking');
+                
+                setTimeout(() => {
+                    this.fixesGenerated = 12;
+                    this.addLog(`✅ Generated ${this.fixesGenerated} minimal diff fixes`, 'fix');
+                    this.addLog('📄 Ready to apply fixes. Click "Fix It" to implement.', 'thinking');
+                    this.isAnalyzing = false;
+                    
+                    // Update UI
+                    document.querySelectorAll('.stat')[0].innerHTML = 
+                        `<i class="fas fa-bug"></i><span>${this.issueCount} issues found</span>`;
+                    document.querySelectorAll('.stat')[2].innerHTML = 
+                        `<i class="fas fa-code"></i><span>${this.fixesGenerated} fixes generated</span>`;
+                }, 1500);
+            }
+            
+            addLog(message, type = 'thinking') {
+                const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry log-${type}`;
+                logEntry.innerHTML = `
+                    <div class="log-timestamp">${timestamp}</div>
+                    <div class="log-content">${message}</div>
+                `;
+                
+                const logContainer = document.querySelector('.thinking-log');
+                logContainer.insertBefore(logEntry, logContainer.querySelector('.issues-container'));
+                logContainer.scrollTop = logContainer.scrollHeight;
+                
+                this.logEntries.push({timestamp, message, type});
+            }
+            
+            applyFixes() {
+                this.addLog('🚀 Applying generated fixes...', 'thinking');
+                this.addLog('📝 Creating patch file: fixes.patch', 'observation');
+                this.addLog('🎨 Updating CSS variables for better contrast', 'fix');
+                this.addLog('📱 Adjusting mobile breakpoints', 'fix');
+                this.addLog('♿ Adding missing ARIA labels', 'fix');
+                this.addLog('✅ All fixes applied successfully!', 'fix');
+                
+                // Show success message
+                const alert = document.createElement('div');
+                alert.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: var(--success);
+                    color: white;
+                    padding: 1rem 1.5rem;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    z-index: 10000;
+                    animation: fadeIn 0.3s;
+                `;
+                alert.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fas fa-check-circle" style="font-size: 1.2rem;"></i>
+                        <div>
+                            <div style="font-weight: 600;">Fixes Applied Successfully</div>
+                            <div style="font-size: 0.9rem;">12 code changes implemented</div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(alert);
+                
+                setTimeout(() => alert.remove(), 5000);
+            }
+        }
+        
+        // Initialize Agent
+        const agent = new AutonomousQAAgent();
+        
+        // Event Listeners
+        document.querySelector('.btn-secondary').addEventListener('click', () => {
+            const url = document.querySelector('.url-input').value;
+            if (url) {
+                agent.analyzeURL(url);
+            }
+        });
+        
+        document.getElementById('fixItBtn').addEventListener('click', () => {
+            agent.applyFixes();
+        });
+        
+        // Simulate initial analysis
+        setTimeout(() => {
+            agent.analyzeURL('https://www.example.com');
+        }, 1000);
+    </script>
+</body>
+</html>
